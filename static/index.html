@@ -1,0 +1,174 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>PDF Q&A - Summarizer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: Arial, sans-serif; max-width:900px; margin:32px auto; padding:12px }
+    header { text-align:center; color:#2E86C1 }
+    .row { display:flex; gap:12px; margin-top:12px }
+    .col { flex:1 }
+    textarea { width:100%; min-height:120px }
+    .history { margin-top:18px; border-top:1px solid #eee; padding-top:12px }
+    .qa { background:#f8f8f8; padding:10px; border-radius:6px; margin-bottom:8px }
+    button { padding:8px 14px; border:none; border-radius:6px; cursor:pointer; background:#2E86C1; color:white }
+    input[type=file] { padding:6px 0 }
+    .status { margin-top:8px; color:green }
+    .error { color:red }
+    .summary-section { margin-top:18px; border:1px solid #ddd; padding:12px; border-radius:6px }
+    .summary-content { 
+      margin-top:8px; 
+      padding:10px; 
+      background:#f8f8f8; 
+      border-radius:4px; 
+      min-height:100px;
+      max-height:300px;
+      overflow-y:auto;
+      white-space:pre-wrap;
+    }
+    .loading { color:#2E86C1; font-style:italic }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>PDF Q&A - Summarizer</h1>
+    <p>Upload your PDF, then ask your questions or get a summary</p>
+  </header>
+
+  <!-- Upload PDF Section -->
+  <section>
+    <label>Upload PDF</label>
+    <input type="file" id="pdffile" accept=".pdf" />
+    <button id="uploadBtn">Process</button>
+    <div id="status" class="status"></div>
+  </section>
+
+  <!-- Summarization Section -->
+  <section class="summary-section">
+    <h3>Document Summary</h3>
+    <div>
+      <button id="summarizeBtn">Generate Summary</button>
+    </div>
+    <div id="summary" class="summary-content">
+      Summary will appear here. Click "Generate Summary" after processing a PDF.
+    </div>
+  </section>
+
+  <!-- Q&A Section (Ask + History) -->
+  <section class="row" style="margin-top:18px">
+    <div class="col">
+      <label>Ask your question</label>
+      <textarea id="query" placeholder="Type a question about the PDF"></textarea>
+      <div style="margin-top:8px">
+        <button id="askBtn">Get Answer</button>
+      </div>
+      <div id="answer" style="margin-top:12px"></div>
+    </div>
+    <div class="col">
+      <h3>Q&A History</h3>
+      <div id="history"></div>
+    </div>
+  </section>
+
+  <script>
+    const uploadBtn = document.getElementById("uploadBtn")
+    const pdffile = document.getElementById("pdffile")
+    const status = document.getElementById("status")
+    const askBtn = document.getElementById("askBtn")
+    const queryEl = document.getElementById("query")
+    const answerEl = document.getElementById("answer")
+    const historyEl = document.getElementById("history")
+    const summarizeBtn = document.getElementById("summarizeBtn")
+    const summaryEl = document.getElementById("summary")
+
+    // ---------- Upload PDF ----------
+    uploadBtn.addEventListener("click", async () => {
+      if (!pdffile.files.length) {
+        status.textContent = "Please choose a PDF first"
+        status.className = "error"
+        return
+      }
+      status.textContent = "Processing PDF..."
+      status.className = "status"
+      summaryEl.textContent = "Summary will appear here after processing..."
+      const form = new FormData()
+      form.append("file", pdffile.files[0])
+      try {
+        const res = await fetch("/upload", { method: "POST", body: form })
+        const data = await res.json()
+        if (data.success) {
+          status.textContent = data.message || "PDF processed successfully. You can now generate a summary or ask questions."
+          status.className = "status"
+        } else {
+          status.textContent = data.error || "Processing failed"
+          status.className = "error"
+        }
+      } catch (e) {
+        status.textContent = "Upload error " + e
+        status.className = "error"
+      }
+    })
+
+    // ---------- Summarization ----------
+    summarizeBtn.addEventListener("click", async () => {
+      summaryEl.innerHTML = '<span class="loading">Generating summary... This may take a moment.</span>'
+      try {
+        const res = await fetch("/summarize", { method: "POST" })
+        const data = await res.json()
+        if (data.success) {
+          summaryEl.textContent = data.summary
+        } else {
+          summaryEl.innerHTML = `<span class="error">${data.error || "Error generating summary"}</span>`
+        }
+      } catch (e) {
+        summaryEl.innerHTML = `<span class="error">Request error: ${e}</span>`
+      }
+    })
+
+    // ---------- Ask Question ----------
+    askBtn.addEventListener("click", async () => {
+      const q = queryEl.value.trim()
+      if (!q) return
+      answerEl.textContent = "Thinking..."
+      try {
+        const body = new URLSearchParams()
+        body.append("q", q)
+        const res = await fetch("/ask", { method: "POST", body })
+        const data = await res.json()
+        if (data.success) {
+          answerEl.textContent = data.answer
+          renderHistory(data.history)
+        } else {
+          answerEl.textContent = data.error || "Error during QA"
+        }
+      } catch (e) {
+        answerEl.textContent = "Request error " + e
+      }
+    })
+
+    // ---------- Render History ----------
+    function renderHistory(history) {
+      if (!history) return
+      historyEl.innerHTML = ""
+      history.slice().reverse().forEach(([q, a]) => {
+        const wrapper = document.createElement("div")
+        wrapper.className = "qa"
+        wrapper.innerHTML = `<strong>Q:</strong> ${escapeHtml(q)}<br/><strong>A:</strong> ${escapeHtml(a)}`
+        historyEl.appendChild(wrapper)
+      })
+    }
+
+    // ---------- Escape HTML ----------
+    function escapeHtml(text) {
+      return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;")
+    }
+  </script>
+</body>
+</html>
