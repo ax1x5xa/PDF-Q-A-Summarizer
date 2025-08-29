@@ -73,4 +73,3 @@ jobs:
           file: ./Dockerfile
           tags: pdf-qa-summarizer:ci
           push: false
-
