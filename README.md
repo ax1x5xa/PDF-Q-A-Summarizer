@@ -11,7 +11,6 @@ Simple FastAPI app that lets you upload a PDF, ask questions using a vector retr
 - Ask questions about the content
 - Uses Hugging Face models for embeddings, responses and summarization
 
-
 ## Notes
 
 - Embeddings: `sentence-transformers/all-MiniLM-L6-v2` (via `HuggingFaceEmbeddings`).
@@ -23,6 +22,8 @@ Simple FastAPI app that lets you upload a PDF, ask questions using a vector retr
 
 ## Requirements
 - Python 3.9–3.11
+- (Optional) A [Hugging Face access token](https://huggingface.co/settings/tokens)  
+  > You’ll need this if you want to use gated/private models or swap in other Hugging Face models that require authentication.
 
 ---
 
@@ -73,6 +74,8 @@ pip install -r requirements.txt
 uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
+---
+
 ## API
 - `POST /upload`  — form-data file upload under key `file` (PDF).
 - `POST /summarize` — summarizes the first few chunks.
@@ -98,8 +101,6 @@ pdf-qa-summarizer/
 - [LangChain](https://www.langchain.com/)
 - [Hugging Face](https://huggingface.co/)
 - [FastAPI](https://fastapi.tiangolo.com/)
-
----
 
 ## Connect with me
 - [LinkedIn](https://www.linkedin.com/in/x1x5x/)
